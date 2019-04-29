@@ -47,7 +47,7 @@ class ClientThread extends Thread {
 			System.out.println("Client nickname is " + nickName);
 
 			this.os.writeObject("You're connected with the server, welcome " + nickName 
-					+ "\nType '/help' to see the commands");
+					+ "\nType '/' or '/help' to see the commands");
 			this.os.flush();
 
 			synchronized (this) {
@@ -72,24 +72,23 @@ class ClientThread extends Thread {
 			while (true) {
 				String line = (String) is.readObject();
 
-				if (line.contains("/")) {
-					if (line.startsWith("/quit")) {
+				if (line.startsWith("/")) {
+					if (line.equals("/quit") || line.equals("/q")) {
 
 						break;
 					}
 					
-					if (line.startsWith("/help")) {
-						this.os.writeObject("Type '/users' to see all the online users");
-						this.os.flush();
-						this.os.writeObject("Type '/nick' to change your nickname");
-						this.os.flush();
-						this.os.writeObject("Type '@<user> <message>' to send a private message to a user");
+					if (line.equals("/help") || line.equals("/")) {
+						this.os.writeObject("Type '/users' to see all the online users \n"
+								+ "Type '/nick' to change your nickname \n"
+								+ "Type '@<user> <message>' to send a private message to a user \n"
+								+ "Type '/q' or '/quit' to quit the server");
 						this.os.flush();
 						
 						continue;
 					}
 
-					if (line.startsWith("/users")) {
+					if (line.equals("/users")) {
 						this.os.writeObject("Online users:");
 						for (ClientThread clientThread : clients) {
 							if (clientThread == this) {
@@ -106,7 +105,7 @@ class ClientThread extends Thread {
 						continue;
 					}
 
-					if (line.startsWith("/nick")) {
+					if (line.equals("/nick")) {
 						String newNick;
 						this.os.writeObject("Please, enter your new nickname");
 						while (true) {
@@ -141,13 +140,14 @@ class ClientThread extends Thread {
 								}
 							}
 						}
-
+ 
+						System.out.println(nickName + " has changed his/her nickname to " + newNick);
 						nickName = newNick;
 						continue;
 
 					} else {
 						this.os.writeObject("ERROR! Invalid command!\n"
-								+ "Please, type '/help' to see all the commands");
+								+ "Please, type '/' or '/help' to see all the commands");
 						this.os.flush();
 						
 						continue;

@@ -1,114 +1,86 @@
+
 import java.io.BufferedReader;
-import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.PrintStream;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.io.IOException;
 import java.net.Socket;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import java.net.UnknownHostException;
 
-public class Client extends Thread {
+public class Client implements Runnable {
 
-	private static Socket client;
-	private BufferedReader input;
-	private PrintStream output;
-	private String ip;
-	private int port;
+	private static Socket clientSocket = null;
+	private static ObjectOutputStream os = null;
+	private static ObjectInputStream is = null;
+	private static BufferedReader inputLine = null;
+	private static boolean closed = false;
 
-	public Client(String ip, int port) {
-		this.ip = ip;
-		this.port = port;
-	}
+	public static void main(String[] args) {
+		int port = 12345;
+		String host = "localhost";
 
-	public void connect() throws IOException {
-		client = new Socket(ip, port);
-		System.out.println("You're connected with the server");
+		if (args.length < 2) {
+			System.out.println("Connecting with server " + host + " in port " + port + "...");
+		} else {
+			host = args[0];
+			port = Integer.valueOf(args[1]).intValue();
+			System.out.println("Server: " + host + ", Port: " + port);
+		}
 
-		input = new BufferedReader(new InputStreamReader(client.getInputStream()));
-		output = new PrintStream(client.getOutputStream());
-	}
+		try {
+			clientSocket = new Socket(host, port);
+			inputLine = new BufferedReader(new InputStreamReader(System.in));
+			os = new ObjectOutputStream(clientSocket.getOutputStream());
+			is = new ObjectInputStream(clientSocket.getInputStream());
+		} catch (UnknownHostException e) {
+			System.err.println("Unknown " + host);
+		} catch (IOException e) {
+			System.err.println("No Server found. Please ensure that the Server program is running and try again.");
+		}
 
-	public void sendMessage(String msg) throws IOException {
-		output.println(msg);
+		if (clientSocket != null && os != null && is != null) {
+			try {
+				new Thread(new Client()).start();
+				while (!closed) {
+
+					String msg = (String) inputLine.readLine().trim();
+
+					os.writeObject(msg);
+					os.flush();
+
+				}
+
+				os.close();
+				is.close();
+				clientSocket.close();
+			} catch (IOException e) {
+				System.err.println("IOException:  " + e);
+			}
+
+		}
 	}
 
 	public void run() {
-		String message;
 
-		while (true) {
-			try {
-				message = input.readLine();
-				
-				if (message == null) {
-					System.out.println("Connection lost");
-					System.exit(0);
-				}
+		String inputLine;
 
-			} catch (IOException ex) {
-				Logger.getLogger(Client.class.getName()).log(Level.SEVERE, null, ex);
+		try {
+
+			while ((inputLine = (String) is.readObject()) != null) {
+				System.out.println(inputLine);
+
+				if (inputLine.indexOf("You left the server") != -1)
+
+					break;
 			}
-		}
 
-	}
-	
-	public static void main(String[] args) throws IOException {
-		
-		Client client = new Client("127.0.0.1", 12345);
-		
-		client.connect();
-		client.start();
-		
-		BufferedReader bf = new BufferedReader(new InputStreamReader(System.in));
-		
-		String message;
-		while (true) {
-			message = bf.readLine();
-			
-			client.sendMessage(message);
-			
-			if (message.equals("/quit")) {
-				break;
-			}
+			closed = true;
+			System.exit(0);
+
+		} catch (IOException | ClassNotFoundException e) {
+
+			System.err.println("Server Process Stopped Unexpectedly!!");
+
 		}
 	}
-
-//	public static void main(String[] args) {
-//		try {
-//			Socket client = new Socket("127.0.0.1", 12345);
-//
-//			BufferedReader input = new BufferedReader(new InputStreamReader(System.in));
-//			PrintStream output = new PrintStream(client.getOutputStream());
-//			
-//			System.out.println("Write your nickname");
-//			String nick = input.readLine();
-//			
-//			output.println(nick + " has connected with the server");
-//			
-//			while (true) {
-//				
-//
-//				String message = input.readLine();
-//				message = message.trim();
-//
-//				output.println(message);
-//
-//				if (message.equals("/quit")) {
-//					output.println("Left the server");
-//					client.close();
-//					input.close();
-//					output.close();
-//					break;
-//				}
-//
-//				if (message.equals("/nickname")) {
-//					//client.set
-//				}
-//
-//			}
-//
-//		}
-//
-//		catch (IOException ex) {
-//			Logger.getLogger(Client.class.getName()).log(Level.SEVERE, null, ex);
-//		}
-//	}
 }
